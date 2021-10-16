@@ -66,12 +66,17 @@ def extend_pinyins(old_map, new_map, only_no_exists=False):
 
 if __name__ == '__main__':
     raw_pinyin_map = {}
+    '''
     with open('kHanyuPinyin.txt', encoding='utf8') as fp:
         khanyupinyin = parse_pinyins(fp)
         raw_pinyin_map.update(khanyupinyin)
     with open('kXHC1983.txt', encoding='utf8') as fp:
         kxhc1983 = parse_pinyins(fp)
         extend_pinyins(raw_pinyin_map, kxhc1983)
+    '''
+    with open('kXHC1983.txt', encoding='utf8') as fp:
+        kxhc1983 = parse_pinyins(fp)
+        raw_pinyin_map.update(kxhc1983)
     with open('nonCJKUI.txt', encoding='utf8') as fp:
         noncjkui = parse_pinyins(fp)
         extend_pinyins(raw_pinyin_map, noncjkui)
@@ -111,7 +116,7 @@ if __name__ == '__main__':
 
     assert len(new_pinyin_map) == len(raw_pinyin_map)
     code_set = set(new_pinyin_map.keys())
-    assert set(khanyupinyin.keys()) - code_set == set()
+    #assert set(khanyupinyin.keys()) - code_set == set()
     assert set(khanyupinyinlu.keys()) - code_set == set()
     assert set(kxhc1983.keys()) - code_set == set()
     assert set(adjust_pinyin_map.keys()) - code_set == set()
