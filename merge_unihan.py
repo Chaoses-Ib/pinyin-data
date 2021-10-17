@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import collections
 
+output_all_pinyins = True
 
 def code_to_hanzi(code):
     hanzi = chr(int(code.replace('U+', '0x'), 16))
@@ -47,6 +48,10 @@ def merge(raw_pinyin_map, adjust_pinyin_map, overwrite_pinyin_map):
 
 
 def save_data(pinyin_map, writer):
+    if output_all_pinyins:
+        all_pinyins = set()
+        all_pinyin_combinations = set()
+
     for code, pinyins in pinyin_map.items():
         hanzi = code_to_hanzi(code)
         line = '{code}: {pinyin}  # {hanzi}\n'.format(
@@ -54,6 +59,24 @@ def save_data(pinyin_map, writer):
         )
         writer.write(line)
 
+        if output_all_pinyins:
+            for pinyin in pinyins:
+                all_pinyins.add(pinyin)
+            all_pinyin_combinations.add(' '.join(pinyins))
+
+    if output_all_pinyins:
+        with open('all_pinyins.md', 'w', encoding='utf8') as f:
+            f.write(f'''## All Pinyins
+{ len(all_pinyins) }
+```
+{ ' '.join(sorted(all_pinyins)) }
+```
+
+## All Pinyin Combinations
+{ sum(comb.count(' ') == 0 for comb in all_pinyin_combinations) } + { sum(comb.count(' ') != 0 for comb in all_pinyin_combinations) } = { len(all_pinyin_combinations) }
+```
+{ chr(10).join(sorted(all_pinyin_combinations, key=lambda x: (x.count(' '), x))) }
+```''')
 
 def extend_pinyins(old_map, new_map, only_no_exists=False):
     for code, pinyins in new_map.items():

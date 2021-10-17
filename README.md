@@ -50,6 +50,8 @@
 * 执行 `merge_unihan` 命令可以按照合并规则生成最新的 `pinyin.txt` 文件
 * 进入 unihan 目录，执行 `make update` 命令可以更新最新的 Unihan 数据
 
+## 其他数据
+* [all_pinyins.md](all_pinyins.md)：[pinyin.txt](pinyin.txt) 中出现的所有拼音及拼音组合
 
 ## 参考资料
 
