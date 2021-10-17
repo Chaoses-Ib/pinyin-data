@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import collections
-
-output_all_pinyins = True
+import re
 
 def code_to_hanzi(code):
     hanzi = chr(int(code.replace('U+', '0x'), 16))
@@ -48,10 +47,6 @@ def merge(raw_pinyin_map, adjust_pinyin_map, overwrite_pinyin_map):
 
 
 def save_data(pinyin_map, writer):
-    if output_all_pinyins:
-        all_pinyins = set()
-        all_pinyin_combinations = set()
-
     for code, pinyins in pinyin_map.items():
         hanzi = code_to_hanzi(code)
         line = '{code}: {pinyin}  # {hanzi}\n'.format(
@@ -59,24 +54,123 @@ def save_data(pinyin_map, writer):
         )
         writer.write(line)
 
-        if output_all_pinyins:
-            for pinyin in pinyins:
-                all_pinyins.add(pinyin)
-            all_pinyin_combinations.add(' '.join(pinyins))
+def pinyin_to_ascii(pinyin):
+    py = re.sub('[āáǎà]', 'a', pinyin)
+    py = re.sub('[ēéěèê̄ếê̌ề]', 'e', py)
+    py = re.sub('[īíǐì]', 'i', py)
+    py = re.sub('[ōóǒò]', 'o', py)
+    py = re.sub('[ūúǔù]', 'u', py)
+    py = re.sub('[üǘǚǜ]', 'v', py)
+    py = re.sub('[ńňǹ]', 'n', py)
+    py = re.sub('[ḿ]', 'm', py)
+    return py
 
-    if output_all_pinyins:
-        with open('all_pinyins.md', 'w', encoding='utf8') as f:
-            f.write(f'''## All Pinyins
+def pinyin_to_ascii_num(pinyin):
+    py = pinyin_to_ascii(pinyin)
+    if re.search('[āēê̄īōū]', pinyin):  # ü
+        return py + '1'
+    if re.search('[áéếíóúǘḿń]', pinyin):
+        return py + '2'
+    if re.search('[ǎěê̌ǐǒǔǚň]', pinyin):
+        return py + '3'
+    if re.search('[àèềìòùǜǹ]', pinyin):
+        return py + '4'
+    return py + '5'  # 0不好输入
+
+# 小鹤双拼
+def pinyin_to_double_pinyin_xiaohe(pinyin):
+    ascii = pinyin_to_ascii(pinyin)
+
+    if ascii[0] == 'z' or ascii[0] == 'c' or ascii[0] == 's':
+        py = ascii[0]
+        ascii = ascii[1:]
+        if ascii[0] == 'h':
+            sheng = { 'z': 'v', 'c': 'i', 's': 'u' }
+            py = sheng[py]
+            ascii = ascii[1:]
+    else:
+        py = ascii[0]
+        ascii = ascii[1:]
+
+    if len(ascii) == 0:
+        py += py
+    elif len(ascii) == 1:
+        py += ascii
+    else:
+        yun = {
+            'iu': 'q', 'ei': 'w', 'uan': 'r', 'ue': 't', 've': 't', 'un': 'y', 'uo': 'o', 'ie': 'p',
+            'ong': 's', 'iong': 's', 'ai': 'd', 'en': 'f', 'eng': 'g', 'ang': 'h', 'an': 'j', 'uai': 'k', 'ing': 'k', 'uang': 'l', 'iang': 'l',
+            'ou': 'z', 'ua': 'x', 'ia': 'x', 'ao': 'c', 'ui': 'v', 'in': 'b', 'iao': 'n', 'ian': 'm',
+            'ng': 'g'  # 哼 hng
+            }
+        py += yun[ascii]
+
+    return py
+
+def save_data2(pinyin_map):
+    all_pinyins = set()
+    pinyin_combinations = set()
+    for pinyins in pinyin_map.values():
+        for pinyin in pinyins:
+            all_pinyins.add(pinyin)
+        pinyin_combinations.add(' '.join(pinyins))
+    all_pinyins = sorted(all_pinyins, key=lambda x: pinyin_to_ascii_num(x))
+    pinyin_combinations = sorted(pinyin_combinations, key=lambda x: (x.count(' '), x))
+
+    pinyin_multi_combination_map = {}
+    for pinyins in pinyin_map.values():
+        if len(pinyins) > 1:
+            pinyin_multi_combination_map[' '.join(pinyins)] = sorted([ all_pinyins.index(pinyin) for pinyin in pinyins ])
+    pinyin_multi_combinations = sorted(pinyin_multi_combination_map.values())
+    for key, val in pinyin_multi_combination_map.items():
+        pinyin_multi_combination_map[key] = pinyin_multi_combinations.index(val)
+
+    # pinyin_compact.txt
+    tables = {
+        range(0x3400, 0x9FED+1): [],  # .{1017}\0
+        range(0x20000, 0x2D016+1): [],
+        range(0x3007, 0x3007+1): [],
+        range(0xE815, 0xE864+1): [],  # .{18472}\0
+        range(0xFA18, 0xFA18+1): [],  # .{4532}\0
+        range(0x2F835, 0x2F835+1): [],  # .{10271}\0
+        range(0x30EDD, 0x30EDE+1): []  # .{5800}\0
+    }
+    for rng, lst in tables.items():
+        lst[:] = [0xFFFF] * (rng.stop - rng.start)
+    for code, pinyins in pinyin_map.items():
+        hanzi = int(code.replace('U+', '0x'), 16)
+        for rng, lst in tables.items():
+            if hanzi in rng:
+                if len(pinyins) == 1:
+                    lst[hanzi - rng.start] = all_pinyins.index(pinyins[0])
+                else:
+                    lst[hanzi - rng.start] = len(all_pinyins) + pinyin_multi_combination_map[' '.join(pinyins)]
+
+    with open('pinyin_compact.txt', 'w', encoding='utf8') as f:
+        f.write(f'''pinyins:
+{ chr(10).join(','.join((pinyin, pinyin_to_ascii(pinyin), pinyin_to_ascii_num(pinyin), pinyin_to_double_pinyin_xiaohe(pinyin))) for pinyin in all_pinyins) }
+
+pinyin_combinations:
+{ chr(10).join(','.join(str(v) for v in combinations) for combinations in pinyin_multi_combinations) }
+
+pinyin_tables:
+{ chr(10).join(f'0x{ rng.start :X}, 0x{ rng.stop - 1 :X}:{ chr(10) }{ ",".join(str(v) for v in lst) }' for rng, lst in tables.items()) }''')
+
+
+    # all_pinyin.md
+    with open('all_pinyins.md', 'w', encoding='utf8') as f:
+        f.write(f'''## All Pinyins
 { len(all_pinyins) }
 ```
 { ' '.join(sorted(all_pinyins)) }
 ```
 
 ## All Pinyin Combinations
-{ sum(comb.count(' ') == 0 for comb in all_pinyin_combinations) } + { sum(comb.count(' ') != 0 for comb in all_pinyin_combinations) } = { len(all_pinyin_combinations) }
+{ len(pinyin_combinations) - len(pinyin_multi_combinations) } + { len(pinyin_multi_combinations) } = { len(pinyin_combinations) }
 ```
-{ chr(10).join(sorted(all_pinyin_combinations, key=lambda x: (x.count(' '), x))) }
+{ chr(10).join(pinyin_combinations) }
 ```''')
+
 
 def extend_pinyins(old_map, new_map, only_no_exists=False):
     for code, pinyins in new_map.items():
@@ -149,3 +243,4 @@ if __name__ == '__main__':
         fp.write('# version: 0.11.0\n')
         fp.write('# source: https://github.com/mozillazg/pinyin-data\n')
         save_data(new_pinyin_map, fp)
+    save_data2(new_pinyin_map)

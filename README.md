@@ -29,6 +29,7 @@
 * `kMandarin_8105.txt`: [《通用规范汉字表》](https://zh.wikipedia.org/wiki/通用规范汉字表)(2013 年版)里 8105 个汉字最常用的一个读音 (**可以修改**)
 * `overwrite.txt`: 手工纠正的拼音数据（**可以修改**）
 * `pinyin.txt`: 合并上述文件后的拼音数据
+* [pinyin_compact.txt](pinyin_compact.txt)：用于程序开发的处理后的拼音数据
 
 <hr />
 
