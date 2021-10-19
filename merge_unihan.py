@@ -56,7 +56,7 @@ def save_data(pinyin_map, writer):
 
 def pinyin_to_ascii(pinyin):
     py = re.sub('[āáǎà]', 'a', pinyin)
-    py = re.sub('[ēéěèê̄ếê̌ề]', 'e', py)
+    py = re.sub('[ēéěèếề]|ê̄|ê̌', 'e', py)  # ê̄=ê+̄ , ê̌=ê+̌ 
     py = re.sub('[īíǐì]', 'i', py)
     py = re.sub('[ōóǒò]', 'o', py)
     py = re.sub('[ūúǔù]', 'u', py)
@@ -67,11 +67,11 @@ def pinyin_to_ascii(pinyin):
 
 def pinyin_to_ascii_num(pinyin):
     py = pinyin_to_ascii(pinyin)
-    if re.search('[āēê̄īōū]', pinyin):  # ü
+    if re.search('[āēīōū]|ê̄', pinyin):  # ü
         return py + '1'
     if re.search('[áéếíóúǘḿń]', pinyin):
         return py + '2'
-    if re.search('[ǎěê̌ǐǒǔǚň]', pinyin):
+    if re.search('[ǎěǐǒǔǚň]|ê̌', pinyin):
         return py + '3'
     if re.search('[àèềìòùǜǹ]', pinyin):
         return py + '4'
@@ -80,6 +80,8 @@ def pinyin_to_ascii_num(pinyin):
 # 小鹤双拼
 def pinyin_to_double_pinyin_xiaohe(pinyin):
     ascii = pinyin_to_ascii(pinyin)
+    if ascii == 'hng':  # 哼
+        ascii = 'heng'
 
     if ascii[0] == 'z' or ascii[0] == 'c' or ascii[0] == 's':
         py = ascii[0]
@@ -97,11 +99,12 @@ def pinyin_to_double_pinyin_xiaohe(pinyin):
     elif len(ascii) == 1:
         py += ascii
     else:
+        if ascii == 'ng':  # ang, eng
+            ascii = py + ascii
         yun = {
             'iu': 'q', 'ei': 'w', 'uan': 'r', 'ue': 't', 've': 't', 'un': 'y', 'uo': 'o', 'ie': 'p',
             'ong': 's', 'iong': 's', 'ai': 'd', 'en': 'f', 'eng': 'g', 'ang': 'h', 'an': 'j', 'uai': 'k', 'ing': 'k', 'uang': 'l', 'iang': 'l',
-            'ou': 'z', 'ua': 'x', 'ia': 'x', 'ao': 'c', 'ui': 'v', 'in': 'b', 'iao': 'n', 'ian': 'm',
-            'ng': 'g'  # 哼 hng
+            'ou': 'z', 'ua': 'x', 'ia': 'x', 'ao': 'c', 'ui': 'v', 'in': 'b', 'iao': 'n', 'ian': 'm'
             }
         py += yun[ascii]
 
@@ -114,7 +117,7 @@ def save_data2(pinyin_map):
         for pinyin in pinyins:
             all_pinyins.add(pinyin)
         pinyin_combinations.add(' '.join(pinyins))
-    all_pinyins = sorted(all_pinyins, key=lambda x: pinyin_to_ascii_num(x))
+    all_pinyins = sorted(all_pinyins, key=lambda x: (pinyin_to_ascii_num(x), x))
     pinyin_combinations = sorted(pinyin_combinations, key=lambda x: (x.count(' '), x))
 
     pinyin_multi_combination_map = {}
