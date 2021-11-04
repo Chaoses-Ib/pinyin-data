@@ -130,6 +130,9 @@ def save_data2(pinyin_map):
 
     # pinyin_compact.txt
     tables = {
+        # 粗略匹配有拼音的汉字：
+        # [〇-礼][𠀀-𰻞]
+        # [〇㐀-鿭-礼][𠀀-𭀖灰𰻝𰻞]
         range(0x3400, 0x9FED+1): [],  # .{1017}\0
         range(0x20000, 0x2D016+1): [],
         range(0x3007, 0x3007+1): [],
