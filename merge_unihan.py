@@ -8,10 +8,13 @@ def code_to_hanzi(code):
 
 
 def sort_pinyin_dict(pinyin_dict):
-    return collections.OrderedDict(
+    dic = collections.OrderedDict(
         sorted(pinyin_dict.items(),
                key=lambda item: int(item[0].replace('U+', '0x'), 16))
     )
+    for item in dic.items():  # pinyin_combinations 要求
+        item[1][:] = sorted(item[1])
+    return dic
 
 
 def remove_dup_items(lst):
