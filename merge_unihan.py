@@ -65,7 +65,7 @@ def pinyin_to_ascii(pinyin):
     py = re.sub('[ūúǔù]', 'u', py)
     py = re.sub('[üǘǚǜ]', 'v', py)
     py = re.sub('[ńňǹ]', 'n', py)
-    py = re.sub('[ḿ]', 'm', py)
+    py = re.sub('[ḿ]|m̀', 'm', py)
     return py
 
 def pinyin_to_ascii_num(pinyin):
@@ -76,42 +76,126 @@ def pinyin_to_ascii_num(pinyin):
         return py + '2'
     if re.search('[ǎěǐǒǔǚň]|ê̌', pinyin):
         return py + '3'
-    if re.search('[àèềìòùǜǹ]', pinyin):
+    if re.search('[àèềìòùǜǹ]|m̀', pinyin):
         return py + '4'
     return py + '5'  # 0不好输入
 
+def pinyin_convert(pinyin: str, pinyin_map: dict, initial_map: dict, final_map: dict):
+    # https://en.wikipedia.org/wiki/Pinyin
+    '''
+    initials = {
+        'b', 'p', 'm', 'f',
+        'd', 't', 'n', 'z', 'c', 's', 'l',
+        'zh', 'ch', 'sh', 'r',
+        'j', 'q', 'x',
+        'g', 'k', 'h',
+        'y', 'w'
+    }
+    finals = {
+        'i', 'u', 'v',
+        'e', 'ie', 'o', 'uo', 'ue', 've',
+        'a', 'ia', 'ua',
+        'ei', 'ui',
+        'ai', 'uai',
+        'ou', 'iu',
+        'ao', 'iao',
+        'in', 'un', 'vn',
+        'en',
+        'an', 'ian', 'uan', 'van',
+        'ing',
+        'ong', 'iong',
+        'eng',
+        'ang', 'iang', 'uang',
+        'er'
+    }
+    '''
+    # https://zh.wikipedia.org/wiki/汉语拼音
+    '''
+    finals = {
+        'a', 'o', 'e', 'er',
+        'i', 'ia', 'ie',
+        'u', 'ua', 'uo',
+        'v', 've', 'ue',
+
+        'ai', 'ei', 'ao', 'ou',
+        'iao', 'iou', 'iu'
+        'uai', 'uei', 'ui'
+
+        'an', 'en', 'ang', 'eng',
+        'ian', 'in', 'iang', 'ing',
+        'uan', 'uen', 'uang', 'ueng', 'ong',
+        'van', 'vn', 'un', 'iong'
+
+        # 'uei', 'uen', 'ueng'
+    }
+    '''
+    ascii = pinyin_to_ascii(pinyin)
+    if ascii == 'hm':  # 噷
+        ascii = 'hen'
+    elif ascii == 'hng':  # 哼
+        ascii = 'heng'
+    elif ascii == 'm':  # 呒呣嘸
+        ascii = 'mu'
+    elif ascii == 'n' or ascii == 'ng':  # 唔嗯 㕶 𠮾
+        ascii = 'en'
+    
+    if py := pinyin_map.get(ascii):
+        return py
+    
+    result = ''
+    for initial in sorted(initial_map, key=lambda x: -len(x)):
+        if ascii.startswith(initial):
+            ascii = ascii[len(initial):]
+            result = initial_map[initial]
+            break
+    
+    if final := final_map.get(ascii):
+        result += final
+    else:
+        raise ValueError
+
+    return result
+
 # 小鹤双拼
 def pinyin_to_double_pinyin_xiaohe(pinyin):
-    ascii = pinyin_to_ascii(pinyin)
-    if ascii == 'hng':  # 哼
-        ascii = 'heng'
-
-    if ascii[0] == 'z' or ascii[0] == 'c' or ascii[0] == 's':
-        py = ascii[0]
-        ascii = ascii[1:]
-        if ascii[0] == 'h':
-            sheng = { 'z': 'v', 'c': 'i', 's': 'u' }
-            py = sheng[py]
-            ascii = ascii[1:]
-    else:
-        py = ascii[0]
-        ascii = ascii[1:]
-
-    if len(ascii) == 0:
-        py += py
-    elif len(ascii) == 1:
-        py += ascii
-    else:
-        if ascii == 'ng':  # ang, eng
-            ascii = py + ascii
-        yun = {
-            'iu': 'q', 'ei': 'w', 'uan': 'r', 'ue': 't', 've': 't', 'un': 'y', 'uo': 'o', 'ie': 'p',
-            'ong': 's', 'iong': 's', 'ai': 'd', 'en': 'f', 'eng': 'g', 'ang': 'h', 'an': 'j', 'uai': 'k', 'ing': 'k', 'uang': 'l', 'iang': 'l',
-            'ou': 'z', 'ua': 'x', 'ia': 'x', 'ao': 'c', 'ui': 'v', 'in': 'b', 'iao': 'n', 'ian': 'm'
-            }
-        py += yun[ascii]
-
-    return py
+    pinyin_map = {
+        'e': 'ee', 'o': 'oo',
+        'a': 'aa',
+        'ei': 'ei',
+        'ai': 'ai',
+        'ou': 'ou',
+        'ao': 'ao',
+        'en': 'en',
+        'an': 'an',
+        'eng': 'eg',
+        'ang': 'ah'
+    }
+    initial_map = {
+        'b': 'b', 'p': 'p', 'm': 'm', 'f': 'f',
+        'd': 'd', 't': 't', 'n': 'n', 'z': 'z', 'c': 'c', 's': 's', 'l': 'l',
+        'zh': 'v', 'ch': 'i', 'sh': 'u', 'r': 'r',
+        'j': 'j', 'q': 'q', 'x': 'x',
+        'g': 'g', 'k': 'k', 'h': 'h',
+        'y': 'y', 'w': 'w'
+    }
+    final_map = {
+        'i': 'i', 'u': 'u', 'v': 'v',
+        'e': 'e', 'ie': 'p', 'o': 'o', 'uo': 'o', 'ue': 't', 've': 't',
+        'a': 'a', 'ia': 'x', 'ua': 'x',
+        'ei': 'w', 'ui': 'v',
+        'ai': 'd', 'uai': 'k',
+        'ou': 'z', 'iu': 'q',
+        'ao': 'c', 'iao': 'n',
+        'in': 'b', 'un': 'y', 'vn': 'y',
+        'en': 'f',
+        'an': 'j', 'ian': 'm', 'uan': 'r', 'van': 'r',
+        'ing': 'k',
+        'ong': 's', 'iong': 's',
+        'eng': 'g',
+        'ang': 'h', 'iang': 'l', 'uang': 'l',
+        'er': 'er'
+    }
+    return pinyin_convert(pinyin, pinyin_map, initial_map, final_map)
 
 def save_data2(pinyin_map):
     all_pinyins = set()
